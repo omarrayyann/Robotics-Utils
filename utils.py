@@ -32,6 +32,33 @@ class Utils:
         is_determinant_one = np.isclose(abs(np.linalg.det(matrix)), 1)
         return is_orthogonal and is_determinant_one
 
+    # Returns the inverse of a rotation matrix (it's transpose)
+    @staticmethod
+    def inverse_rotation(matrix):
+        inverted_rotation = np.transpose(matrix)
+        return inverted_rotation
+
+    # Invert a homogeneous transformation matrix
+    @ staticmethod
+    def inverse_homogeneous_rotation(matrix):
+        rotated_matrix = matrix[:3, :3]
+        position = matrix[:3, 3]
+        inverse_rotation_matrix = Utils.inverse_rotation(rotated_matrix)
+        new_position = -1 * Utils.transform_position(position, inverse_rotation_matrix)
+        inverted_homogeneous_rotation = np.array([inverse_rotation_matrix, new_position], [0, 0, 0, 1])
+        return inverted_homogeneous_rotation
+
+    # Transforms a position by a homogeneous transformation matrix
+    @staticmethod
+    def transform_position(position, transformation):
+        new_position = np.multiply(transformation, np.array([position], [0]))
+        return np.array([[new_position[0]], [new_position[1]], [new_position[2]]])
+
+    # Converts a rotation matrix and a translation to a homogeneous matrix
+    @staticmethod
+    def homogeneous_matrix(rotation_matrix, translation):
+        return np.array([[rotation_matrix, translation],[0, 0, 0, 1]])
+
     # Returns a 2D rotation matrix given an angle
     def rotation_matrix_2d(self, angle):
         if not self.radians:
@@ -53,6 +80,7 @@ class Utils:
                 raise ValueError("Dimension of a 3D rotation must must be 0 (x-axis), 1 (y-axis) or 2 (z-axis)")
         except Exception as e:
             return e
+
 
 
 
