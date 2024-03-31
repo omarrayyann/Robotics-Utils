@@ -136,8 +136,16 @@ class Utils:
 
     # Finds the 3D vector [x, y, z] from a skew symmetric matrix
     @staticmethod
-    def from_skew(matrix):
-        return np.array([matrix[2][1], matrix[0][2], -matrix[0][1]])
+    def from_skew_3d(matrix):
+        return np.array([matrix[2][1], matrix[0][2], matrix[1][0]])
+    
+    # Finds the 4D vector [x, y, z] from a skew symmetric matrix
+    @staticmethod
+    def from_skew_6d(matrix):
+        skew_w = matrix[0:3,0:3]
+        w = Utils.from_skew_3d(skew_w)
+        v = matrix[0:3,3]
+        return Utils.to_twist_vector(v,w)
 
     # Checks if a given matrix is a skew symmetric matrix
     @staticmethod
@@ -153,7 +161,7 @@ class Utils:
     # Returns the ross product two 3x3 matrices
     @staticmethod
     def cross_product_3d(vector1, vector2):
-        return Utils.vector_to_ssm(vector1) @ vector2
+        return Utils.to_skew_3d(vector1) @ vector2
 
     # Finds spatial angular velocity and returns [w]
     @staticmethod
@@ -181,7 +189,24 @@ class Utils:
     def to_twist_matrix(linear_velocity, angular_velocity):
         twist_vector = Utils.to_twist_vector(linear_velocity, angular_velocity)
         return Utils.twist_vector_to_twist_matrix(twist_vector)
+
+    # Angular velocity to rotation matrix
+    @staticmethod
+    def angular_to_rotation(w):
+        return Utils.exp_3d_skew(w)
     
+    # Rotation matrix to twist vector
+    @staticmethod
+    def rotation_to_angular(matrix):
+        skew_w = scipy.linalg.logm(matrix)
+        w = Utils.from_skew_3d(skew_w)
+        return w
+
+    # Transformation matrix to twist vector
+    @staticmethod
+    def tranformation_to_twist(transformation):
+        skew_twist = Utils.from_skew_6d(transformation)
+        
 
     # Returns a homogenus transformation given a twist [[w0],[w1],[w2],[v0],[v1],v[2]]
     @staticmethod
@@ -189,5 +214,73 @@ class Utils:
         return Utils.exp(Utils.to_skew_6d(vector))
     
     # Exponential of a matrix
+    @staticmethod
     def exp(matrix):
         return scipy.linalg.expm(matrix)
+    
+    # Takes the exponential of a 3d vector like the angular velocity
+    @staticmethod
+    def exp_3d_skew(w):
+        w_norm = Utils.norm(w)
+        w_unit = Utils.unit_vector(w)
+        return np.identity(3) + Utils.to_skew_3d(w_unit)*np.sin(w_norm) + (Utils.to_skew_3d(w_unit)@Utils.to_skew_3d(w_unit))*(1-np.cos(w_norm))
+
+    # Takes the log of a 3x3 matrix like a rotation
+    @staticmethod
+    def log_matrix(matrix):
+        if np.array_equal(matrix,np.identity(3)):
+            return np.array([1.0,0.0,0.0])
+        if np.trace(matrix) == -1:
+            return (1/np.sqrt(2*(1+matrix[2][2]))) * np.array([matrix[0][2],matrix[1][2],1+matrix[2][2]])*np.pi
+        magnitude = np.arccos(0.5*(np.trace(matrix)-1))
+        skew = (matrix-matrix.T)/ (2*np.sin(magnitude))
+        return magnitude*skew
+
+    # Gets rotation matrix from a transformation matrix
+    @staticmethod
+    def get_rotation(transformation):
+        return transformation[0:3,0:3]
+
+    # Gets translation matrix from a transformation matrix
+    @staticmethod
+    def get_translation(transformation):
+        return np.block([[transformation[0:3,3]]]).T
+
+    @staticmethod
+    # Finds norm of a 3d vector
+    @staticmethod
+    def norm(vector):
+        return np.linalg.norm(vector)
+
+    # Finds unit vector of a given 3d vector
+    @staticmethod
+    def unit_vector(vector):
+        return vector/Utils.norm(vector)
+
+    # Finds the adjoint representation of a transformation matrix
+    @staticmethod
+    def adjoint(transformation):
+        R = Utils.get_rotation(transformation)
+        p = Utils.get_translation(transformation)
+        adjoint_matrix = np.block([
+            [R,np.zeros((3,3))],
+            [Utils.to_skew_3d(p)@R,R],
+        ])
+        return adjoint_matrix
+
+    # Changes frame of a twist
+    @staticmethod
+    def transform_twist(transformation_ab, twist_b):
+        twist_a = Utils.adjoint(transformation_ab)@twist_b
+        return twist_a
+
+    # Changes frame of a wrench
+    @staticmethod
+    def transform_wrench(transformation_ab, twist_b):
+        twist_a = Utils.adjoint(transformation_ab.T) @ twist_b
+        return twist_a
+
+    # Returns the wrench vector
+    @staticmethod
+    def wrench(center_mass, force):
+        return np.block([center_mass.T,force.T])
