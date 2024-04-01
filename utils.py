@@ -182,7 +182,7 @@ class Utils:
     # Returns a twist given an angular velocity and linear velocity
     @staticmethod
     def to_twist_vector(linear_velocity, angular_velocity):
-        return np.block([[angular_velocity],[linear_velocity]])
+        return np.block([[angular_velocity,linear_velocity]]).T
     
     # Returns a twist given an angular velocity and linear velocity
     @staticmethod
@@ -195,7 +195,7 @@ class Utils:
     def angular_to_rotation(w):
         return Utils.exp_3d_skew(w)
     
-    # Rotation matrix to twist vector
+    # Rotation matrix to angular vector
     @staticmethod
     def rotation_to_angular(matrix):
         skew_w = scipy.linalg.logm(matrix)
@@ -204,11 +204,12 @@ class Utils:
 
     # Transformation matrix to twist vector
     @staticmethod
-    def tranformation_to_twist(transformation):
-        skew_twist = Utils.from_skew_6d(transformation)
-        
+    def transformation_to_twist(transformation):
+        skew_twist = Utils.log_matrix(transformation)
+        twist = Utils.from_skew_6d(skew_twist)
+        return twist
 
-    # Returns a homogenus transformation given a twist [[w0],[w1],[w2],[v0],[v1],v[2]]
+    # Returns a homogeneous transformation given a twist [[w0],[w1],[w2],[v0],[v1],v[2]]
     @staticmethod
     def twist_vector_to_twist_matrix(vector):
         return Utils.exp(Utils.to_skew_6d(vector))
