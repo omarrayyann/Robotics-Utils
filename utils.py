@@ -285,3 +285,32 @@ class Utils:
     @staticmethod
     def wrench(center_mass, force):
         return np.block([center_mass.T,force.T])
+    
+    # Returns inverse (or pseduo inverse if not invertible)
+    @staticmethod
+    def inv(x):
+        return np.linalg.pinv(x)
+    
+    # Twist given jacobian and joints velocity
+    @staticmethod
+    def twist_from_jacobian(J,dq):
+        return J@dq
+
+    # Joints velocity given jacobian and twist
+    @staticmethod
+    def dq_from_jacobian(J,V):
+        return Utils.inv(J)@V
+    
+    # Torque given jacobian and wrench
+    @staticmethod
+    def torque_from_jacobian(J,F):
+        return J.T@F
+    
+    # Wrench given jacobian and torque
+    @staticmethod
+    def wrench_from_jacobian(J,tor):
+        return Utils.inv(J.T)@tor
+    
+
+
+
